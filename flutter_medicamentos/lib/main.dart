@@ -1,107 +1,313 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://ywutwurawjlcbppshqoh.supabase.co',
+    anonKey: 'sb_publishable_xAd5kd_GSJGOeDaJL7kL6g_sw5PZl0k',
+  );
+
+  runApp(const MedicationApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  // This widget is the root of your application.
+final supabase = Supabase.instance.client;
+
+class MedicationApp extends StatelessWidget {
+  const MedicationApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Recordatorio de Medicamentos',
-      darkTheme: ThemeData.dark(),
+      title: 'MedRemind Cloud',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple
+        primarySwatch: Colors.indigo,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
-      home: const MyHomePage(title: 'Home page'),
+      // Check if user is already logged in
+      home: supabase.auth.currentUser == null ? const LoginScreen() : const HomeScreen(),
     );
-  } // build
-} // MyApp
+  }
+}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+// ---------------------------------------------------------------------------
+// 1. LOGIN SCREEN: Handles Email/Password Auth
+// ---------------------------------------------------------------------------
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-} // MyHomePage
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  } // _MyHomePageState
+  Future<void> _signIn() async {
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
+    } on AuthException catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unexpected error occurred'), backgroundColor: Colors.red),
+      );
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _signUp() async {
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account created! Logging in...')),
+        );
+        // Supabase often logs you in automatically after signup,
+        // otherwise prompt to sign in.
+         Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
+    } on AuthException catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+      );
+    }
+    setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.cloud_circle, size: 80, color: Colors.indigo),
+              const SizedBox(height: 20),
+              Text("MedRemind Cloud", style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 40),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                obscureText: true,
+              ),
+              const SizedBox(height: 24),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: _signIn,
+                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                      child: const Text('Sign In'),
+                    ),
+                    TextButton(onPressed: _signUp, child: const Text('Create Account')),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. HOME SCREEN: Real-time List from Supabase
+// ---------------------------------------------------------------------------
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  Future<void> _signOut(BuildContext context) async {
+    await supabase.auth.signOut();
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()));
+    }
+  }
+
+  Future<void> _addMedication(String name, String dosage, TimeOfDay time) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    await supabase.from('medications').insert({
+      'user_id': user.id, // Important for RLS
+      'name': name,
+      'dosage': dosage,
+      'hour': time.hour,
+      'minute': time.minute,
+    });
+  }
+
+  Future<void> _deleteMedication(String id) async {
+    await supabase.from('medications').delete().eq('id', id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // We use a Stream to get real-time updates from Supabase
+    final _medicationStream = supabase
+        .from('medications')
+        .stream(primaryKey: ['id'])
+        .order('hour', ascending: true)
+        .order('minute', ascending: true);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Medications'),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        actions: [
+          IconButton(icon: const Icon(Icons.logout), onPressed: () => _signOut(context))
+        ],
+      ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _medicationStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final medications = snapshot.data!;
+
+          if (medications.isEmpty) {
+            return const Center(child: Text("No medications found. Add one!"));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: medications.length,
+            itemBuilder: (context, index) {
+              final med = medications[index];
+              final time = TimeOfDay(hour: med['hour'], minute: med['minute']);
+
+              return Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.indigo.shade100,
+                    child: const Icon(Icons.medication, color: Colors.indigo),
+                  ),
+                  title: Text(med['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(med['dosage']),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        time.format(context),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo.shade700),
+                      ),
+                      const SizedBox(width: 10),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteMedication(med['id']),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => AddMedicationForm(onAdd: _addMedication),
+        ),
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. THE FORM: Same as before, but decoupled from logic
+// ---------------------------------------------------------------------------
+class AddMedicationForm extends StatefulWidget {
+  final Function(String, String, TimeOfDay) onAdd;
+  const AddMedicationForm({super.key, required this.onAdd});
+
+  @override
+  State<AddMedicationForm> createState() => _AddMedicationFormState();
+}
+
+class _AddMedicationFormState extends State<AddMedicationForm> {
+  final _nameController = TextEditingController();
+  final _dosageController = TextEditingController();
+  TimeOfDay? _selectedTime;
+
+  void _submit() {
+    if (_nameController.text.isEmpty || _dosageController.text.isEmpty || _selectedTime == null) return;
+    widget.onAdd(_nameController.text, _dosageController.text, _selectedTime!);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: 16, right: 16, top: 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text("Add New Med", style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+          TextField(controller: _dosageController, decoration: const InputDecoration(labelText: 'Dosage', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+          ListTile(
+            title: Text(_selectedTime == null ? "Select Time" : "Time: ${_selectedTime!.format(context)}"),
+            trailing: const Icon(Icons.access_time),
+            onTap: () async {
+              final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+              if (t != null) setState(() => _selectedTime = t);
+            },
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _submit,
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            child: const Text("Save to Cloud"),
+          ),
+        ],
+      ),
     );
   }
 }
