@@ -20,20 +20,22 @@ class MedicationApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MedRemind Cloud',
+      title: 'Dosifi-kt',
       theme: ThemeData(
         primarySwatch: Colors.indigo,
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
-      // Check if user is already logged in
-      home: supabase.auth.currentUser == null ? const LoginScreen() : const HomeScreen(),
+      // Verifica que el usuario esté log
+      home: supabase.auth.currentUser == null
+          ? const LoginScreen()
+          : const HomeScreen(),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// 1. LOGIN SCREEN: Handles Email/Password Auth
+// 1. PANTALLA INICIO DE SESIÓN: Autorización
 // ---------------------------------------------------------------------------
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,20 +56,29 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
+      if (!mounted) return;
+
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on AuthException catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message), backgroundColor: Colors.red),
       );
     } catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unexpected error occurred'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Error inesperado'),
+          backgroundColor: Colors.red,
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _signUp() async {
@@ -77,21 +88,25 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created! Logging in...')),
-        );
-        // Supabase often logs you in automatically after signup,
-        // otherwise prompt to sign in.
-         Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cuenta creada ...')),
+      );
+
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } on AuthException catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message), backgroundColor: Colors.red),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -105,16 +120,25 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Icon(Icons.cloud_circle, size: 80, color: Colors.indigo),
               const SizedBox(height: 20),
-              Text("MedRemind Cloud", style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                "Dosifi-kt",
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
               const SizedBox(height: 40),
               TextField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Contraseña',
+                  border: OutlineInputBorder(),
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 24),
@@ -125,10 +149,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: _signIn,
-                      style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                      child: const Text('Sign In'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                      child: const Text('Inciar Sesión'),
                     ),
-                    TextButton(onPressed: _signUp, child: const Text('Create Account')),
+                    TextButton(
+                      onPressed: _signUp,
+                      child: const Text('Crear Cuenta'),
+                    ),
                   ],
                 ),
             ],
@@ -148,47 +177,55 @@ class HomeScreen extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     await supabase.auth.signOut();
     if (context.mounted) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()));
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
-  Future<void> _addMedication(String name, String dosage, TimeOfDay time) async {
+  Future<void> _addMedication(
+    String nombre,
+    String dosis,
+    TimeOfDay hora,
+  ) async {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
-    await supabase.from('medications').insert({
+    await supabase.from('medicamentos').insert({
       'user_id': user.id, // Important for RLS
-      'name': name,
-      'dosage': dosage,
-      'hour': time.hour,
-      'minute': time.minute,
+      'nombre': nombre,
+      'dosis': dosis,
+      'frecuencia_horas': hora.hour,
+      'minute': hora.minute,
     });
   }
 
   Future<void> _deleteMedication(String id) async {
-    await supabase.from('medications').delete().eq('id', id);
+    await supabase.from('medicamentos').delete().eq('id', id);
   }
 
   @override
   Widget build(BuildContext context) {
     // We use a Stream to get real-time updates from Supabase
-    final _medicationStream = supabase
-        .from('medications')
+    final medicationStream = supabase
+        .from('medicamentos')
         .stream(primaryKey: ['id'])
         .order('hour', ascending: true)
         .order('minute', ascending: true);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Medications'),
+        title: const Text('Mis medicamentos'),
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: () => _signOut(context))
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _signOut(context),
+          ),
         ],
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _medicationStream,
+        stream: medicationStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -200,7 +237,7 @@ class HomeScreen extends StatelessWidget {
           final medications = snapshot.data!;
 
           if (medications.isEmpty) {
-            return const Center(child: Text("No medications found. Add one!"));
+            return const Center(child: Text("Aún no hay medicamentos. Agrega uno!"));
           }
 
           return ListView.builder(
@@ -208,7 +245,7 @@ class HomeScreen extends StatelessWidget {
             itemCount: medications.length,
             itemBuilder: (context, index) {
               final med = medications[index];
-              final time = TimeOfDay(hour: med['hour'], minute: med['minute']);
+              final time = TimeOfDay(hour: med['hora'], minute: med['minutos']);
 
               return Card(
                 elevation: 2,
@@ -218,16 +255,20 @@ class HomeScreen extends StatelessWidget {
                     backgroundColor: Colors.indigo.shade100,
                     child: const Icon(Icons.medication, color: Colors.indigo),
                   ),
-                  title: Text(med['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(med['dosage']),
+                  title: Text(
+                    med['nombre'],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(med['dosis']),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         time.format(context),
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo.shade700),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo.shade700,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       IconButton(
@@ -271,7 +312,10 @@ class _AddMedicationFormState extends State<AddMedicationForm> {
   TimeOfDay? _selectedTime;
 
   void _submit() {
-    if (_nameController.text.isEmpty || _dosageController.text.isEmpty || _selectedTime == null) return;
+    if (_nameController.text.isEmpty ||
+        _dosageController.text.isEmpty ||
+        _selectedTime == null)
+      return;
     widget.onAdd(_nameController.text, _dosageController.text, _selectedTime!);
     Navigator.of(context).pop();
   }
@@ -281,30 +325,53 @@ class _AddMedicationFormState extends State<AddMedicationForm> {
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        left: 16, right: 16, top: 16,
+        left: 16,
+        right: 16,
+        top: 16,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text("Add New Med", style: Theme.of(context).textTheme.titleLarge),
+          Text("Añadir nuevo medicamento", style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
-          TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder())),
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Nombre',
+              border: OutlineInputBorder(),
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _dosageController, decoration: const InputDecoration(labelText: 'Dosage', border: OutlineInputBorder())),
+          TextField(
+            controller: _dosageController,
+            decoration: const InputDecoration(
+              labelText: 'Dosis',
+              border: OutlineInputBorder(),
+            ),
+          ),
           const SizedBox(height: 12),
           ListTile(
-            title: Text(_selectedTime == null ? "Select Time" : "Time: ${_selectedTime!.format(context)}"),
+            title: Text(
+              _selectedTime == null
+                  ? "Selecciona el horario"
+                  : "Horario: ${_selectedTime!.format(context)}",
+            ),
             trailing: const Icon(Icons.access_time),
             onTap: () async {
-              final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+              final t = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
               if (t != null) setState(() => _selectedTime = t);
             },
           ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _submit,
-            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-            child: const Text("Save to Cloud"),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
+            child: const Text("Guardar"),
           ),
         ],
       ),
