@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "462413284970",
+    "project_id": "flutter-app-d22d3",
+    "storage_bucket": "flutter-app-d22d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462413284970:android:732c61c0a6bd8e391d6c13",
+        "android_client_info": {
+          "package_name": "com.example.flutter_medicamentos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDi5EaOxK2UEC43M1ZVMzD4k0yavdPugks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462413284970:android:1fd4740683bb18c41d6c13",
+        "android_client_info": {
+          "package_name": "com.example.medicacion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDi5EaOxK2UEC43M1ZVMzD4k0yavdPugks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
